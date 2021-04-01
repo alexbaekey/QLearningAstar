@@ -1,4 +1,5 @@
 import numpy as np
+import random
 
 class grid():
 
@@ -16,6 +17,19 @@ class grid():
 		self.current_y=0
 		self.gridmatrix[current_x][current_y]=1
 		
+
+	def place_obstacles(self,numberofobst=7)
+		"""
+		places an input number of obtacles randomly in the grid
+		"""
+		for i in range(numberofobst):
+			while(1):
+				x=random.choice[range(9)]
+				y=random.choice[range(9)]
+				if(self.gridmatrix[x][y]==0):
+					self.gridmatrix[x][y]=1
+					break		
+
 
 	def movement(self,current_x,current_y,direction)
 		self.gridmatrix[current_x][current_y]=0
