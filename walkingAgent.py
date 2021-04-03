@@ -8,6 +8,7 @@ class grid():
 		2D grid platform for agent to walk through,
 		each "cell" of the grid is either free or occupied.
 		A 0 will represent free and 1 will represent occupied.
+		-1 will represent where the agent is
 		"""
 		self.max_x=10
 		self.max_y=10
@@ -15,7 +16,7 @@ class grid():
 		self.gridmatrix=np.zeros(dimensions,dtype=int)
 		self.current_x=0
 		self.current_y=0
-		self.gridmatrix[current_x][current_y]=1
+		self.gridmatrix[current_x][current_y]=-1 #-1 will indicate agent
 		
 
 	def place_obstacles(self,numberofobst=7)
