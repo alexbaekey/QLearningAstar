@@ -20,6 +20,7 @@ class sim:
         self.maxstep=maxstep
         self.current_x=0
         self.current_y=0
+        self.win=(10,10)
         for i in range(numepoc):
             print("Epoch #" + str(i+1) + "\n")
             self.start()
@@ -32,12 +33,55 @@ class sim:
         self.gridmatrix[self.current_y][self.current_x]=-1
         # value of -1 will indicate agent
         self.direction=0
+        self.lastlocation_x=0
+        self.lastlocation_y=0
+        if(simtype==1):
+            self.init_qtable()   
+            self.init_rewardgrid()
         for i in range(int(self.maxstep)):
             self.print_grid()
             if(simtype==0):
                 self.det_movement(direction=self.direction)
             else:
                 self.stoc_movement(direction=self.direction)
+        self.print_grid()
+
+    def init_qtable(self):
+        """
+        Initialize Q value matrix
+        """
+        #TODO add q values below to config
+        self.epsilon=0.05
+        self.alpha=0.1
+        self.gamma=1
+        self.qtable=dict()
+        for i in range(self.max_x):
+            for j in range(self.max_y):
+                self.qtable[(i,j)] = {'up':0, 'down':0, 
+                'left':0, 'right':0}
+    
+    def init_rewardgrid(self):
+        """
+        Initialize reward grid associated with Q-Learning
+        Same dimensions as environment grid
+        """
+        self.rewardgrid=np.zeros()
+        self.rewardgrid[self.win[0],self.win[1]]=100
+        for i in range(self.max_x):
+            for j in range(self.max_y):
+                if(self.gridmatrix[i][j]==1):
+                    self.rewardgrid[i][j]=-20
+
+    def update_qtable(self):
+        """
+        Select direction based on q values
+        Updates Q value matrix with ...
+        """
+        # choose action with highest reward, updates direction
+        action = 0
+
+
+
 
 
     def place_obstacles(self,numberofobst=7):
@@ -48,7 +92,7 @@ class sim:
             while(1):
                 x=random.choice(range(9))
                 y=random.choice(range(9))
-                if(self.gridmatrix[y][x]==0):
+                if(self.gridmatrix[y][x]==0 and not (x==0 and y==0)):
                     self.gridmatrix[y][x]=1
                     break		
 
