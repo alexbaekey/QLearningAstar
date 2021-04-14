@@ -25,6 +25,7 @@ class sim:
         self.x=0
         self.y=0
         self.win=(max_x,max_y)
+        self.won=False
         self.total_rewards=np.zeros((numepisode),dtype=float)
         self.numsteps2win=np.zeros((numepisode),dtype=int)
         self.gridmatrix[0][0]=-1
@@ -48,6 +49,7 @@ class sim:
         totalreward=0
         endgame=False
         self.trap=False
+        self.won=False
         totalreward=0
         while (timestep<self.maxstep and endgame!=True):
             if(simtype==0):
@@ -74,10 +76,14 @@ class sim:
                 new_state=new_state,reward=reward,action=action)
                 if(self.gridmatrix[self.win[1]-1][self.win[0]-1]==-1):
                     endgame=True
+                    self.won=True
                     print("WINNER\n\n\n\n\n\n\n")
                     self.numsteps2win[i]=timestep
                     self.total_rewards[i]=totalreward
                     self.gridmatrix[self.win[1]-1][self.win[0]-1]=0
+        if(self.won==False):
+            self.numsteps2win[i]=timestep
+            self.total_rewards[i]=totalreward
         self.print_grid()
         if(self.trap==False):
             self.gridmatrix[self.y][self.x]=0
