@@ -18,13 +18,13 @@ class sim:
         self.max_y=max_y
         self.start_x=0
         self.start_y=0
-        dimensions=(self.max_y,self.max_x)
+        dimensions=(max_y,max_x)
         self.gridmatrix=np.zeros(dimensions,dtype=int)
         self.place_obstacles(numberofobst=int(numobst))
         self.maxstep=maxstep
         self.x=0
         self.y=0
-        self.win=(5,5)
+        self.win=(max_x,max_y)
         self.total_rewards=np.zeros((numepisode),dtype=float)
         self.numsteps2win=np.zeros((numepisode),dtype=int)
         self.gridmatrix[0][0]=-1
@@ -51,13 +51,14 @@ class sim:
         totalreward=0
         while (timestep<self.maxstep and endgame!=True):
             if(simtype==0):
+                timestep+=1
                 self.det_movement(direction=self.direction)
                 if(self.gridmatrix[self.win[1]-1][self.win[0]-1]==-1):
                     endgame=True
                     print("WINNER\n\n\n\n\n\n")
                     self.gridmatrix[self.win[1]-1][self.win[0]-1]=0
-                timestep+=1
             else:
+                timestep+=1
                 self.print_grid()
                 print("step #" + str(timestep) + "\n")
                 action=self.choose_action()
@@ -77,7 +78,6 @@ class sim:
                     self.numsteps2win[i]=timestep
                     self.total_rewards[i]=totalreward
                     self.gridmatrix[self.win[1]-1][self.win[0]-1]=0
-                timestep+=1
         self.print_grid()
         if(self.trap==False):
             self.gridmatrix[self.y][self.x]=0
@@ -87,9 +87,9 @@ class sim:
 
     def init_qtable(self):
         """
-        Initialize Q value matrix
-        actionsize = 5 for the 5 possible directions
-        statesize=100 for all possible 
+        Initialize empty Q value matrix: self.qtable[actionsize][statesize]
+        actionsize = 5 for the 5 possible directions 
+        statesize = total number of grid elements
         """
         actionsize=5 
         self.qtable=np.zeros((self.max_x*self.max_y,actionsize),dtype=float) 
@@ -97,7 +97,7 @@ class sim:
     def init_rewardgrid(self):
         """
         Initialize reward grid associated with Q-Learning
-        Same dimensions as environment grid
+        Fills self.qtable
         """
         self.rewardgrid=np.zeros((self.max_y,self.max_x))
         for i in range(self.max_x):
@@ -111,7 +111,7 @@ class sim:
 
     def choose_action(self):
         """
-        Epsilon Greedy algorithm
+        Epsilon Greedy algorithm to select action
         """
         #choose action
         epsilon=0.1
@@ -126,9 +126,11 @@ class sim:
         return action
 
     def currentlocation2state(self):
+        """
+        converts x,y coordinates to corresponding state value
+        """
         state=self.y*self.max_y+self.x
         return state
-
 
     def update_qtable(self,old_state,new_state,reward,action):
         """
@@ -150,8 +152,7 @@ class sim:
 
     def place_obstacles(self,numberofobst=7):
         """
-        places an input number of obtacles randomly 
-        in the grid
+        places an input number of obtacles randomly in the grid
         """
         for i in range(numberofobst):
             while(1):
@@ -159,7 +160,7 @@ class sim:
                 y=random.choice(range((self.max_y-1)))
                 self.gridmatrix[self.start_y][self.start_x]
                 if(self.gridmatrix[y][x]==0 and 
-                not (x==0 and y==0)):
+                not ((x==0 and y==0) or (x==self.max_x and y==self.max_y))):
                     self.gridmatrix[y][x]=1
                     break		
 
@@ -169,11 +170,7 @@ class sim:
 
     def stoc_movement(self,direction=0):
         """
-        stochastic  movement based on Q-Learning algorithm        
-        Inputs:
-            directions (dtype:str)
-        Outputs:
-            None
+        stochastic  movement based on Q-Learning algorithm
         """
         r=random.random()
         if (r<0.8):
