@@ -7,35 +7,40 @@ plt.ion()
 
 class sim:
 
-    def __init__(self, simtype, numbost, maxstep, numepisode, alpha, gamma, max_x, max_y):
+    def __init__(self, numbost, maxstep, numepisode, alpha, gamma, max_x, max_y):
         """
         2D grid platform for agent to walk through,
         each "cell" of the grid is either free or occupied.
-        A 0 will represent free and 1 will represent occupied.
+        A 0 will represent free and 1 will represent a trap.
         -1 will represent where the agent is
         """
+        # Initial values
         self.max_x=max_x
         self.max_y=max_y
         self.start_x=0
         self.start_y=0
-        dimensions=(max_y,max_x)
-        self.gridmatrix=np.zeros(dimensions,dtype=int)
-        self.place_obstacles(numberofobst=int(numobst))
         self.maxstep=maxstep
         self.x=0
         self.y=0
         self.win=(max_x,max_y)
         self.won=False
+        self.trap=False
+        dimensions=(max_y,max_x)
+        # Initialize occupancy grid
+        self.gridmatrix=np.zeros(dimensions,dtype=int)
+        # Place obstacles on grid
+        self.place_obstacles(numberofobst=int(numobst))
+        # Create evaluation arrays
         self.total_rewards=np.zeros((numepisode),dtype=float)
         self.numsteps2win=np.zeros((numepisode),dtype=int)
+        #Set agent on grid, -1 will indicate agent
         self.gridmatrix[0][0]=-1
-        # value of -1 will indicate agent
-        self.trap=False
-        if(simtype==1):
-            self.init_qtable()   
-            self.init_rewardgrid()
-            self.alpha = alpha
-            self.gamma = gamma
+        #Initialize Q-table and reward grid
+        self.init_qtable()   
+        self.init_rewardgrid()
+        #Initialize Q-learning values
+        self.alpha = alpha
+        self.gamma = gamma
         for i in range(numepisode):
             print("Episode #" + str(i+1) + "\n")
             self.start(i)
@@ -52,35 +57,27 @@ class sim:
         self.won=False
         totalreward=0
         while (timestep<self.maxstep and endgame!=True):
-            if(simtype==0):
-                timestep+=1
-                self.det_movement(direction=self.direction)
-                if(self.gridmatrix[self.win[1]-1][self.win[0]-1]==-1):
-                    endgame=True
-                    print("WINNER\n\n\n\n\n\n")
-                    self.gridmatrix[self.win[1]-1][self.win[0]-1]=0
-            else:
-                timestep+=1
-                self.print_grid()
-                print("step #" + str(timestep) + "\n")
-                action=self.choose_action()
-                print("action:"+str(action)+", ")
-                old_state=self.currentlocation2state()
-                print("old_state:"+str(old_state)+", ")
-                action,reward=self.stoc_movement(direction=action)
-                totalreward+=reward
-                print("reward:"+str(reward)+", ")
-                new_state=self.currentlocation2state()
-                print("new_state"+str(new_state)+"\n")
-                self.update_qtable(old_state=old_state, \
-                new_state=new_state,reward=reward,action=action)
-                if(self.gridmatrix[self.win[1]-1][self.win[0]-1]==-1):
-                    endgame=True
-                    self.won=True
-                    print("WINNER\n\n\n\n\n\n\n")
-                    self.numsteps2win[i]=timestep
-                    self.total_rewards[i]=totalreward
-                    self.gridmatrix[self.win[1]-1][self.win[0]-1]=0
+            timestep+=1
+            self.print_grid()
+            print("step #" + str(timestep) + "\n")
+            action=self.choose_action()
+            print("action:"+str(action)+", ")
+            old_state=self.currentlocation2state()
+            print("old_state:"+str(old_state)+", ")
+            action,reward=self.stoc_movement(direction=action)
+            totalreward+=reward
+            print("reward:"+str(reward)+", ")
+            new_state=self.currentlocation2state()
+            print("new_state"+str(new_state)+"\n")
+            self.update_qtable(old_state=old_state, \
+            new_state=new_state,reward=reward,action=action)
+            if(self.gridmatrix[self.win[1]-1][self.win[0]-1]==-1):
+                endgame=True
+                self.won=True
+                print("WINNER\n\n\n\n\n\n\n")
+                self.numsteps2win[i]=timestep
+                self.total_rewards[i]=totalreward
+                self.gridmatrix[self.win[1]-1][self.win[0]-1]=0
         if(self.won==False):
             self.numsteps2win[i]=timestep
             self.total_rewards[i]=totalreward
@@ -169,10 +166,6 @@ class sim:
                 not ((x==0 and y==0) or (x==self.max_x and y==self.max_y))):
                     self.gridmatrix[y][x]=1
                     break		
-
-
-    def det_movement(self,direction=0):
-        pass
 
     def stoc_movement(self,direction=0):
         """
@@ -299,37 +292,38 @@ class sim:
         plt.xlabel("Episode number")
         plt.ylabel("# timesteps to win")
         plt.xticks(np.arange(min(x),max(x)+1,int(max(x)/20)))
-        plt.savefig("number_steps_to_win.png")
+        plt.savefig("Q-Learn_steps_to_win.png")
         plt.clf()
         plt.plot(x,self.total_rewards)
         plt.title("Total rewards")
         plt.xlabel("Episode number")
         plt.ylabel("Total reward claimed")
         plt.xticks(np.arange(min(x),max(x)+1,int(max(x)/20)))
-        plt.savefig("total_rewards_collected.png")
+        plt.savefig("Q-Learn_total_rewards.png")
 
 
 if __name__ == "__main__":
-    configval=sys.argv[1]
-    # -c for configuration file, -i for user input
+    try:
+        configval=sys.argv[1]
+        # -c for configuration file, -i for user input
+    except:
+        print("make sure to include -c for config file or -i for user input")
     if configval == "-c":
         config=configparser.ConfigParser()
         config.read('values.conf')
-        simtype    = int(config['sim']['simtype'])
         numobst    = int(config['sim']['numobst'])
         maxstep    = int(config['sim']['maxstep'])
         numepisode = int(config['sim']['numepisode'])
-        alpha      = float(config['sim']['alpha'])
-        gamma      = float(config['sim']['gamma'])
-        max_x      = int(config['sim']['max_x'])
-        max_y      = int(config['sim']['max_y'])
+        alpha      = float(config['Q-Learn']['alpha'])
+        gamma      = float(config['Q-Learn']['gamma'])
+        max_x      = int(config['Q-Learn']['max_x'])
+        max_y      = int(config['Q-Learn']['max_y'])
     elif configval == "-i":
-        simtype=input("Select 0 for deterministic (A* algorithm), 1 for stochastic (Q Learning)\n")
-        numobst = input("Enter the number of obstacles\n")
-        maxstep = input("Enter the maximum number of timesteps\n")
+        numobst    = input("Enter the number of obstacles\n")
+        maxstep    = input("Enter the maximum number of timesteps\n")
         numepisode = input("Enter the number of episodes\n")
-        alpha = input("Enter the learning rate (alpha)\n")
-        gamma = input("Enter the discount (gamma)\n") 
-        max_x = input("Enter the max x value for the grid\n")
-        max_y = input("Enter the max y value for the grid\n") 
-    obj=sim(simtype,numobst,maxstep,numepisode,alpha,gamma,max_x,max_y)
+        alpha      = input("Enter the learning rate (alpha)\n")
+        gamma      = input("Enter the discount (gamma)\n") 
+        max_x      = input("Enter the max x value for the grid\n")
+        max_y      = input("Enter the max y value for the grid\n") 
+    obj=sim(numobst,maxstep,numepisode,alpha,gamma,max_x,max_y)
