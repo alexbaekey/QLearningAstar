@@ -2,6 +2,7 @@ import numpy as np
 import random
 import configparser 
 import sys
+import seaborn as sns
 import matplotlib.pyplot as plt
 plt.ion()
 
@@ -17,14 +18,15 @@ class sim:
         # Initial values
         self.max_x=max_x
         self.max_y=max_y
-        self.start_x=0
-        self.start_y=0
+        # Roll for random starting point
+        self.start_x=np.random.randint(0,max_x-1)
+        self.start_y=np.random.randint(0,max_y)
         self.maxstep=maxstep
-        self.x=0
-        self.y=0
-        self.win=(max_x,max_y)
+        self.x=self.start_x
+        self.y=self.start_y
+        #winning block always along right side
+        self.win=(max_x,np.random.randint(0,max_y))
         self.won=False
-        self.trap=False
         dimensions=(max_y,max_x)
         # Initialize occupancy grid
         self.gridmatrix=np.zeros(dimensions,dtype=int)
@@ -34,59 +36,53 @@ class sim:
         self.total_rewards=np.zeros((numepisode),dtype=float)
         self.numsteps2win=np.zeros((numepisode),dtype=int)
         #Set agent on grid, -1 will indicate agent
-        self.gridmatrix[0][0]=-1
+        self.gridmatrix[self.start_y][self.start_x]=-1
         #Initialize Q-table and reward grid
         self.init_qtable()   
         self.init_rewardgrid()
+        #Set goal on grid, -2 will indicate goal
+        self.gridmatrix[self.win[1]-1,self.win[0]-1]=-2
         #Initialize Q-learning values
         self.alpha = alpha
         self.gamma = gamma
         for i in range(numepisode):
             print("Episode #" + str(i+1) + "\n")
+            self.start_x=np.random.randint(0,max_x-1)
+            self.start_y=np.random.randint(0,max_y)
             self.start(i)
         self.eval(numepisode)
 
     def start(self,i):
-        self.x=0
-        self.y=0
+        self.x=self.start_x
+        self.y=self.start_y
         self.direction=0
         timestep=0
         totalreward=0
         endgame=False
-        self.trap=False
         self.won=False
-        totalreward=0
+        totalreward=0 
         while (timestep<self.maxstep and endgame!=True):
             timestep+=1
-            self.print_grid()
-            print("step #" + str(timestep) + "\n")
+            print("step #" + str(timestep))
             action=self.choose_action()
-            print("action:"+str(action)+", ")
             old_state=self.currentlocation2state()
-            print("old_state:"+str(old_state)+", ")
             action,reward=self.stoc_movement(direction=action)
             totalreward+=reward
-            print("reward:"+str(reward)+", ")
             new_state=self.currentlocation2state()
-            print("new_state"+str(new_state)+"\n")
             self.update_qtable(old_state=old_state, \
             new_state=new_state,reward=reward,action=action)
             if(self.gridmatrix[self.win[1]-1][self.win[0]-1]==-1):
                 endgame=True
                 self.won=True
-                print("WINNER\n\n\n\n\n\n\n")
+                self.print_grid()
+                print("WINNER\n\n\n\n\n")
                 self.numsteps2win[i]=timestep
                 self.total_rewards[i]=totalreward
-                self.gridmatrix[self.win[1]-1][self.win[0]-1]=0
+                self.gridmatrix[self.win[1]-1][self.win[0]-1]=-2
         if(self.won==False):
             self.numsteps2win[i]=timestep
             self.total_rewards[i]=totalreward
-        self.print_grid()
-        if(self.trap==False):
             self.gridmatrix[self.y][self.x]=0
-        else:
-            self.gridmatrix[self.y][self.x]=1
-            self.trap=False
 
     def init_qtable(self):
         """
@@ -105,19 +101,17 @@ class sim:
         self.rewardgrid=np.zeros((self.max_y,self.max_x))
         for i in range(self.max_x):
             for j in range(self.max_y):
-                if(self.gridmatrix[j][i]==1):
-                    self.rewardgrid[j][i]=-100
                 if(self.gridmatrix[j][i]==0 or \
                 self.gridmatrix[j][i]==-1):
                     self.rewardgrid[j][i]=-0.5
-        self.rewardgrid[self.win[0]-1,self.win[1]-1]=1000
+        self.rewardgrid[self.win[1]-1,self.win[0]-1]=100
 
     def choose_action(self):
         """
         Epsilon Greedy algorithm to select action
         """
         #choose action
-        epsilon=0.1
+        epsilon=0.05
         if np.random.uniform(0,1)<epsilon:
             action=np.random.randint(0, 4)
         else:
@@ -139,16 +133,9 @@ class sim:
         """
         updates qtable
         """    
-        print("oldstate"+str(old_state))
-        print("newstate"+str(new_state))
-        print("reward"+str(reward))
-        print("action"+str(action))    
         qval_newstate=self.qtable[new_state]
-        print("qtable[newstate]" + str(self.qtable[new_state]))
         maxq_newstate=np.max(qval_newstate)
-        print("maxq_newstate:" + str(maxq_newstate))
         curqval=self.qtable[old_state][action]      
-        print("curqval:" + str(curqval)) 
         self.qtable[old_state][action]= \
         (1-self.alpha)*curqval+self.alpha*\
         (reward+self.gamma*maxq_newstate) 
@@ -161,9 +148,9 @@ class sim:
             while(1):
                 x=random.choice(range((self.max_x-1)))
                 y=random.choice(range((self.max_y-1)))
-                self.gridmatrix[self.start_y][self.start_x]
                 if(self.gridmatrix[y][x]==0 and 
-                not ((x==0 and y==0) or (x==self.max_x and y==self.max_y))):
+                not ((x==self.start_x and y==self.start_y) or \
+                (x==self.win[0]-1 and y==self.win[1]-1))):
                     self.gridmatrix[y][x]=1
                     break		
 
@@ -172,32 +159,29 @@ class sim:
         stochastic  movement based on Q-Learning algorithm
         """
         r=random.random()
-        if (r<0.8):
+        if (r<0.6):
             # commence direction as commanded
             pass
-        if (r>=0.8 and r<0.85):
+        if (r>=0.6 and r<0.7):
             #change direction
             direction=(direction+1)%5
             print("CHANGE ACTION, now:"+str(direction))
-        if (r>=0.85 and r<0.9):
+        if (r>=0.7 and r<0.8):
             #change direction
             direction=(direction+2)%5
             print("CHANGE ACTION, now:"+str(direction))
         # change direction
-        if (r>=0.9 and r<0.95):
+        if (r>=0.8 and r<0.9):
             #change direction
             direction=(direction+3)%5
             print("CHANGE ACTION, now:"+str(direction))
         # change direction
-        if (r>=0.95 and r<1.0):
+        if (r>=0.9 and r<=1.0):
             #stay in same spot
             direction=4
             print("CHANGE ACTION, now:"+str(direction))
-        if(self.trap==False):
-            self.gridmatrix[self.y][self.x]=0 # token placement cleaned
-        else:
-            self.gridmatrix[self.y][self.x]=1
-            self.trap=False
+        self.gridmatrix[self.y][self.x]=0 # token placement cleaned
+
 
         #up
         if((direction==0) and (self.y<self.max_y-1)):
@@ -205,14 +189,10 @@ class sim:
                 self.y += 1
                 reward=self.rewardgrid[self.y][self.x]
             else:
-                self.y+=1
-                self.trap=True
                 reward=self.rewardgrid[self.y][self.x]
                 #no movement,hit obstacle,collect reward
         elif (direction==0 and (self.y>=(self.max_y-1))):
             reward=self.rewardgrid[self.y][self.x]
-            if(self.gridmatrix[self.y][self.x]==1):
-                self.trap=True
             #no movement,at top of grid,collect reward
 
         #down
@@ -221,14 +201,10 @@ class sim:
                 self.y -= 1
                 reward=self.rewardgrid[self.y][self.x]
             else:
-                self.trap=True
-                self.y -=1
                 reward=self.rewardgrid[self.y][self.x]
                 #no movement,hit obstacle,collect reward
         elif(direction==1 and self.y==0):
             reward=self.rewardgrid[self.y][self.x]
-            if(self.gridmatrix[self.y][self.x]==1):
-                self.trap=True
             #no movement,at bottom,collect reward
 
         #left
@@ -237,14 +213,10 @@ class sim:
                 self.x -= 1
                 reward=self.rewardgrid[self.y][self.x]
             else:
-                self.x -=1
-                self.trap=True
                 reward=self.rewardgrid[self.y][self.x]
                 #no movement,hit obstacle,collect reward
         elif((direction==2) and (self.x==0)):
             reward=self.rewardgrid[self.y][self.x]
-            if(self.gridmatrix[self.y][self.x]==1):
-                self.trap=True
             #no movement,at far left,collect reward
 
         #right
@@ -253,22 +225,16 @@ class sim:
                 self.x += 1
                 reward=self.rewardgrid[self.y][self.x] 
             else:
-                self.x += 1
                 reward=self.rewardgrid[self.y][self.x]
-                self.trap=True
                 #no movement,hit obstacle,collect reward
         elif((direction==3 and self.x==(self.max_x-1))):
             reward=self.rewardgrid[self.y][self.x]
-            if(self.gridmatrix[self.y][self.x]==1):
-                self.trap=True
             #no movement,at far left,collect reward
 
         #stay still
         if(direction==4):
             # no movement
             reward=self.rewardgrid[self.y][self.x]
-            if(self.gridmatrix[self.y][self.x]==1):
-                self.trap=True
 
         self.gridmatrix[self.y][self.x]=-1
         #token placement marked
@@ -292,14 +258,20 @@ class sim:
         plt.xlabel("Episode number")
         plt.ylabel("# timesteps to win")
         plt.xticks(np.arange(min(x),max(x)+1,int(max(x)/20)))
-        plt.savefig("Q-Learn_steps_to_win.png")
+        plt.savefig("results/Q-Learn_steps_to_win.png")
         plt.clf()
         plt.plot(x,self.total_rewards)
         plt.title("Total rewards")
         plt.xlabel("Episode number")
         plt.ylabel("Total reward claimed")
         plt.xticks(np.arange(min(x),max(x)+1,int(max(x)/20)))
-        plt.savefig("Q-Learn_total_rewards.png")
+        plt.savefig("results/Q-Learn_total_rewards.png")
+        np.savetxt("results/grid",self.gridmatrix,fmt='%d')
+        np.savetxt("results/final_Qtable",self.qtable,fmt='%.2f',header="up, down, left, right, no move")
+        plt.clf()
+        ax=sns.heatmap(self.qtable,linewidth=0.5,cmap="YlGnBu")
+        plt.savefig("results/qtable.png")
+
 
 
 if __name__ == "__main__":
@@ -312,12 +284,12 @@ if __name__ == "__main__":
         config=configparser.ConfigParser()
         config.read('values.conf')
         numobst    = int(config['sim']['numobst'])
-        maxstep    = int(config['sim']['maxstep'])
-        numepisode = int(config['sim']['numepisode'])
+        max_x      = int(config['sim']['max_x'])
+        max_y      = int(config['sim']['max_y'])
+        maxstep    = int(config['Q-Learn']['maxstep'])
+        numepisode = int(config['Q-Learn']['numepisode'])
         alpha      = float(config['Q-Learn']['alpha'])
         gamma      = float(config['Q-Learn']['gamma'])
-        max_x      = int(config['Q-Learn']['max_x'])
-        max_y      = int(config['Q-Learn']['max_y'])
     elif configval == "-i":
         numobst    = input("Enter the number of obstacles\n")
         maxstep    = input("Enter the maximum number of timesteps\n")
