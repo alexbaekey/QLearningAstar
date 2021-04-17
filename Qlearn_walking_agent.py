@@ -3,6 +3,7 @@ import random
 import configparser 
 import sys
 import seaborn as sns
+import time
 import matplotlib.pyplot as plt
 plt.ion()
 
@@ -47,10 +48,16 @@ class sim:
         self.gamma = gamma
         for i in range(numepisode):
             print("Episode #" + str(i+1) + "\n")
-            self.start_x=np.random.randint(0,max_x-1)
-            self.start_y=np.random.randint(0,max_y)
+            while(1):
+                x=np.random.randint(0,max_x-1)
+                y=np.random.randint(0,max_y)
+                if(self.gridmatrix[y][x]!=1):
+                    self.start_x=x
+                    self.start_y=y
+                    break
             self.start(i)
         self.eval(numepisode)
+        self.testagent()
 
     def start(self,i):
         self.x=self.start_x
@@ -75,7 +82,7 @@ class sim:
                 endgame=True
                 self.won=True
                 self.print_grid()
-                print("WINNER\n\n\n\n\n")
+                print("winner :) \n\n\n")
                 self.numsteps2win[i]=timestep
                 self.total_rewards[i]=totalreward
                 self.gridmatrix[self.win[1]-1][self.win[0]-1]=-2
@@ -83,6 +90,33 @@ class sim:
             self.numsteps2win[i]=timestep
             self.total_rewards[i]=totalreward
             self.gridmatrix[self.y][self.x]=0
+
+    def testagent(self):
+        for i in range(2):
+            self.start_noupdate()
+
+    def start_noupdate(self):
+        self.x=self.start_x
+        self.y=self.start_y
+        self.direction=0
+        timestep=0
+        endgame=False
+        self.won=False
+        while (timestep<self.maxstep and endgame!=True):
+            timestep+=1
+            print("step #" + str(timestep))
+            action=self.choose_action()
+            old_state=self.currentlocation2state()
+            action,reward=self.stoc_movement(direction=action)
+            self.print_grid()
+            time.sleep(1)
+            if(self.gridmatrix[self.win[1]-1][self.win[0]-1]==-1):
+                endgame=True
+                self.won=True
+                self.print_grid()
+                print("winner :) \n\n\n")
+                self.gridmatrix[self.win[1]-1][self.win[0]-1]=-2
+                time.sleep(5)
 
     def init_qtable(self):
         """
@@ -152,7 +186,7 @@ class sim:
                 not ((x==self.start_x and y==self.start_y) or \
                 (x==self.win[0]-1 and y==self.win[1]-1))):
                     self.gridmatrix[y][x]=1
-                    break		
+                    break	
 
     def stoc_movement(self,direction=0):
         """
@@ -243,12 +277,11 @@ class sim:
     def print_grid(self):
         print("occupancy grid:\n")
         print(np.flip(self.gridmatrix,0))
-        print("\n"+"reward grid"+"\n")
-        print(np.flip(self.rewardgrid,0))
-        print("\n"+"qtable" + "\n")
-        print(self.qtable)
+        #print("\n"+"reward grid"+"\n")
+        #print(np.flip(self.rewardgrid,0))
+        #print("\n"+"qtable" + "\n")
+        #print(self.qtable)
         #print("\n")
-        return(self.gridmatrix)
 
 
     def eval(self,numepisodes):
@@ -266,7 +299,7 @@ class sim:
         plt.ylabel("Total reward claimed")
         plt.xticks(np.arange(min(x),max(x)+1,int(max(x)/20)))
         plt.savefig("results/Q-Learn_total_rewards.png")
-        np.savetxt("results/grid",self.gridmatrix,fmt='%d')
+        np.savetxt("results/Q-Learning_grid",self.gridmatrix,fmt='%d')
         np.savetxt("results/final_Qtable",self.qtable,fmt='%.2f',header="up, down, left, right, no move")
         plt.clf()
         ax=sns.heatmap(self.qtable,linewidth=0.5,cmap="YlGnBu")

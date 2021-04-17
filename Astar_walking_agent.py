@@ -25,7 +25,7 @@ class sim:
         self.start_x=np.random.randint(0,max_x-1)
         self.start_y=np.random.randint(0,max_y)
         #winning block always along right side
-        self.win=(max_x,np.random.randint(0,max_y))
+        self.win=(max_x-1,np.random.randint(0,max_y))
         self.end_x=self.win[0]
         self.end_y=self.win[1]
         self.won=False
@@ -35,6 +35,8 @@ class sim:
         self.place_obstacles(numberofobst=int(numobst))
         self.x=self.start_x
         self.y=self.start_y
+        self.gridmatrix[self.y][self.x]=-1
+        self.gridmatrix[self.win[1]][self.win[0]]=-2
         self.g_grid=np.zeros(dimensions,dtype=float)
         self.h_grid=np.zeros(dimensions,dtype=float)
         self.f_grid=np.zeros(dimensions,dtype=float)
@@ -42,7 +44,7 @@ class sim:
         #for opengrid, 0 is open, 1 is closed
         self.timestep=0
         self.path = []
-        self.path.append((self.x,self.y))
+        self.path.append((self.x+1,self.y+1))
         #0 is open, 1 is closed
         # run
         self.run()
@@ -52,8 +54,8 @@ class sim:
             self.timestep+=1
             for i in [-1,0,1]:
                 for j in [-1,0,1]:
-                    if(self.x+i==self.win[0]-1 and self.y+j==self.win[1]-1):
-                        self.path.append((self.x+i,self.y+j))
+                    if(self.x+i==self.win[0] and self.y+j==self.win[1] and \
+                    i!=j and i!=-j):
                         self.won=True
                         break;
                     if((self.x+i>=0 and self.x+i<=self.max_x-1) and \
@@ -63,14 +65,15 @@ class sim:
                             self.calc_g(self.x+i,self.y+j,self.start_x,self.start_y)
                             self.calc_h(self.x+i,self.y+j,self.end_x,self.end_y)
                             self.calc_f(self.x+i,self.y+j)
-                    else:
-                        #out of bounds
-                        pass
-            self.printfgrid()
-            self.move(self.x,self.y)
-            time.sleep(3)
             if(self.won==True):
+                self.path.append((self.end_x+1,self.end_y+1))
                 break
+            self.printfgrid()
+            self.gridmatrix[self.y][self.x]=0
+            self.move(self.x,self.y)
+            self.gridmatrix[self.y][self.x]=-1
+            time.sleep(1)
+        self.printfgrid()
         self.printresults()
 
     def calc_g(self,cur_x,cur_y,start_x,start_y):
@@ -85,6 +88,12 @@ class sim:
         move in that direction
         """        
         self.f_grid[cur_y][cur_x]=self.g_grid[cur_y][cur_x]+self.h_grid[cur_y][cur_x]
+        # Artificially sink agent into goal by reducing f value around goal
+        # This is to avoid the agent wandering away due to direcitonal movement 
+        # limitations. If not used, agent will have smaller f value leading away
+        # from goal at last step
+        if(abs(cur_y-self.end_y)<=1 and cur_x>=self.max_x-2):
+            self.f_grid[cur_y][cur_x]-=3
 
     def move(self,cur_x,cur_y):
         minf=999999
@@ -94,14 +103,15 @@ class sim:
                 (cur_y+j>=0 and cur_y+j<=self.max_y-1) and not \
                 (i==0 and j==0) and self.opengrid[cur_y+j][cur_x+i]!=1):
                     if (self.f_grid[cur_y+j][cur_x+i]<minf and \
-                    self.gridmatrix[cur_y+j][cur_x+i]!=1):
+                    self.gridmatrix[cur_y+j][cur_x+i]!=1 and \
+                    i!=-j and i!=j):
                         minf=self.f_grid[cur_y+j][cur_x+i]
                         next_x=cur_x+i
                         next_y=cur_y+j
         self.opengrid[cur_y][cur_x]=1
         self.x=next_x
         self.y=next_y
-        self.path.append((self.x,self.y))
+        self.path.append((self.x+1,self.y+1))
 
 
     def place_obstacles(self,numberofobst=7):
@@ -120,13 +130,21 @@ class sim:
 
 
     def printfgrid(self):
+        print(self.gridmatrix)
+        #print(np.round(self.g_grid,2))
+        #print(np.round(self.h_grid,2))
         print(np.round(self.f_grid,2))
         print("\n")
 
     def printresults(self):
-        print("START: " + str(self.start_x)+","+str(self.start_y)+"\n") 
-        print("END: " + str(self.end_x)+","+str(self.end_y)+"\n") 
+        print("START: (" + str(self.start_x+1)+","+str(self.start_y+1)+")"+"\n") 
+        print("END: (" + str(self.end_x+1)+","+str(self.end_y+1)+")"+"\n") 
         print("PATH:" + "\n" + str(self.path))
+        np.savetxt("results/Astar_grid",self.gridmatrix,fmt='%d')
+        np.savetxt("results/g",self.g_grid,fmt='%.2f')
+        np.savetxt("results/h",self.h_grid,fmt='%.2f')
+        np.savetxt("results/f",self.f_grid,fmt='%.2f')
+
 
 
 if __name__ == "__main__":
